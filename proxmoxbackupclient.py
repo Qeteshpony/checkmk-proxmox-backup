@@ -18,13 +18,16 @@ datafile = "/tmp/backupstatus.json"
 warnage = 60*60*24 + 60*60  # 1 day and 1 hour
 critage = 60*60*24*7 + 60*60  # 1 week and 1 hour
 
-def getClientData() -> dict:
+def getClientData(namespace=False) -> dict:
     # Call the proxmox backup client to get information about stored backups
     for name, value in config["environment"].items():
         os.environ[name.upper()] = value
 
     # Get the results and check if the command was successful - exit if not
-    result = subprocess.run((config["paths"]["backupclient"], "list", "--output-format", "json"), capture_output=True)
+    if namespace:
+        result = subprocess.run((config["paths"]["backupclient"], "list", "--output-format", "json", "--ns", namespace), capture_output=True)
+    else:
+        result = subprocess.run((config["paths"]["backupclient"], "list", "--output-format", "json"), capture_output=True)
     if result.returncode == 0:
         return json.loads(result.stdout)
     else:
@@ -41,6 +44,9 @@ if __name__ == "__main__":
     changed = False
 
     data = getClientData()
+    if "namespaces" in config["paths"]:
+        for name in config["paths"]["namespaces"].split(','):
+            data += getClientData(name.strip())
     for host in data:
         # get the data for each stored backup and process it
         timestamp = host.get("last-backup")
@@ -72,3 +78,4 @@ if __name__ == "__main__":
         # store the new data if there were any changes
         with open(datafile, "w") as f:
             json.dump(storeddata, f)
+
