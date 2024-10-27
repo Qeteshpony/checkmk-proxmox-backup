@@ -15,7 +15,7 @@ config.read("/root/proxmoxbackupclient.ini")
 datafile = "/tmp/backupstatus.json"
 
 # warn and critical levels for backup-age in seconds
-warnage = 60*60*24 + 60*60  # 1 day and 1 hour
+warnage = 60*60*24 + 60*90  # 1 day and 1.5 hours to avoid unnessecary warnings on dailight saving time change
 critage = 60*60*24*7 + 60*60  # 1 week and 1 hour
 
 def getClientData(namespace: str = None) -> dict:
