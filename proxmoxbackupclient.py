@@ -50,16 +50,17 @@ if __name__ == "__main__":
             for host in nsdata:
                 host["namespace"] = nsname
                 data += [host]
+
+    states = []
+    outputlines = []
+
     for host in data:
         # get the data for each stored backup and process it
         timestamp = host.get("last-backup")
-        hostname = f'{host.get("backup-type")}/{host.get("backup-id")}'
-        if host.get("namespace"):
-            hostname = f'{host.get("namespace")}/{hostname}'
-        if timestamp is None:
-            status = 2
-            date = "unknown"
-        else:
+        if timestamp:  # ignore entries without timestamp
+            hostname = f'{host.get("backup-type")}/{host.get("backup-id")}'
+            if host.get("namespace"):
+                hostname = f'{host.get("namespace")}/{hostname}'
             # compare reported timestamp to stored one and update/overwrite if necessary
             if hostname in storeddata.keys():
                 if timestamp < storeddata[hostname]:
@@ -78,7 +79,19 @@ if __name__ == "__main__":
                 status = 1
             else:
                 status = 0
-        print(f'{status} "Backup Status {hostname}" - Last backup: {date}, Backup-Count: {host.get("backup-count")}, Owner: {host.get("owner")}')
+            states.append(status)
+            outputlines.append(f'{hostname}" - Last backup: {date}, Backup-Count: {host.get("backup-count")}, Owner: {host.get("owner")}')
+
+    if config["formatting"]["services"] == "grouped":
+        outtext = f'{max(states)} "Backup Status" - OK: {states.count(0)}, WARN: {states.count(1)}, CRIT: {states.count(2)}'
+        statustexts = {0: "OK", 1: "WARN", 2: "CRIT"}
+        for status, text in zip(states, outputlines):
+            outtext += f'\\n{statustexts[status]}: "{text}'
+        print(outtext)
+    else:
+        for status, text in zip(states, outputlines):
+            print(f'{status} "Backup Status {text}')
+
     if changed:
         # store the new data if there were any changes
         with open(datafile, "w") as f:
